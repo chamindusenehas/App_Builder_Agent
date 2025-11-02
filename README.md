@@ -24,16 +24,16 @@ The agent operates through modular components handling state management, code ge
 ---
 
 ## 📂 Project Structure
-App_Builder_Agent/
-├── agent/
-│ ├── generated_project/ # Generated applications
-│ ├── graph.py
-│ ├── prompts.py
-│ ├── states.py
-│ └── tools.py
-├── main.py
-├── pyproject.toml
-├── .gitignore
-├── README.md
-└── .env
+- App_Builder_Agent/
+- ├── agent/
+- │ ├── generated_project/ # Generated applications
+- │ ├── graph.py
+- │ ├── prompts.py
+- │ ├── states.py
+- │ └── tools.py
+- ├── main.py
+- ├── pyproject.toml
+- ├── .gitignore
+- ├── README.md
+- └── .env
 ---
