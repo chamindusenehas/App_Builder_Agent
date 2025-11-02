@@ -1,0 +1,63 @@
+# Python cache and build files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.spec
+.python-version
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.iml
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Dependency and package managers
+pip-log.txt
+pip-delete-this-directory.txt
+uv.lock
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Environment configuration
+*.env
+*.env.*
+
+# Generated or temporary project files
+agent/generated_project/
+generated_project/
+
+# Testing and coverage
+.coverage
+htmlcov/
+.tox/
+.nox/
+pytest_cache/
+coverage.xml
+
+# PyCharm specific
+.idea/*
+*.iml
