@@ -11,13 +11,8 @@ build/
 .eggs/
 *.spec
 .python-version
-
-# Virtual environments
+.venv
 .env
-.venv/
-env/
-venv/
-ENV/
 
 # IDE and editor settings
 .idea/
@@ -41,10 +36,6 @@ uv.lock
 
 # Jupyter notebooks checkpoints
 .ipynb_checkpoints/
-
-# Environment configuration
-*.env
-*.env.*
 
 # Generated or temporary project files
 agent/generated_project/

@@ -3,6 +3,8 @@ import subprocess
 from typing import Tuple
 
 from langchain_core.tools import tool
+from langchain.agents.middleware import wrap_tool_call
+from langchain_core.messages import ToolMessage
 
 PROJECT_ROOT = pathlib.Path.cwd() / "generated_project"
 
@@ -60,3 +62,14 @@ def run_cmd(cmd: str, cwd: str = None, timeout: int = 30) -> Tuple[int, str, str
 def init_project_root():
     PROJECT_ROOT.mkdir(parents=True, exist_ok=True)
     return str(PROJECT_ROOT)
+
+@wrap_tool_call
+def handle_tool_errors(request, handler):
+    """Handle tool execution errors with custom messages."""
+    try:
+        return handler(request)
+    except Exception as e:
+        return ToolMessage(
+            content=f"Tool error: Please check your input and try again. ({str(e)})",
+            tool_call_id=request.tool_call["id"]
+        )

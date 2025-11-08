@@ -31,7 +31,7 @@ def coder_system_prompt() -> str:
     CODER_SYSTEM_PROMPT = """
 You are the CODER agent.
 You are implementing a specific engineering task.
-You have only access to these tools to read and write files. (use the same name as mentioned below for calling the tool:
+You have only access to these tools to do your task effectively. (use the same name as mentioned below for calling the tool:
     read_file 
     write_file
     get_current_directory

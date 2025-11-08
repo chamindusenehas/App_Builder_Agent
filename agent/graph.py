@@ -1,89 +1,97 @@
-from langchain_groq import ChatGroq
-from langchain.agents import create_agent
+from langchain_groq.chat_models import ChatGroq
 from dotenv import load_dotenv
 from agent.prompts import *
 from agent.tools import *
 from agent.states import *
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
+from langchain.agents import create_agent
+
 
 _ = load_dotenv()
 
+PROJECT_ROOT.mkdir(parents=True, exist_ok=True)
 
-class AgentState(TypedDict):
+class InputState(TypedDict):
     user_prompt: str
+
+class PlannerState(TypedDict):
     plan: Plan
-    architect_plan: TaskPlan
-    code: list[str]
-    coder_state: CoderState
+
+class ArchitectState(TypedDict):
+    task_plan: TaskPlan
 
 llm = ChatGroq(model="llama-3.3-70b-versatile")
+coder_llm = ChatGroq(model="qwen/qwen3-32b")
+tools = [write_file, read_file, list_files, get_current_directory, run_cmd]
 
-user_prompt = "make a simplecalculator web application"
 
-def planner_agent(state: AgentState) -> AgentState:
-    users_prompt = state["user_prompt"]
-    prompt = planner_prompt(users_prompt)
-    resp = llm.with_structured_output(Plan).invoke(prompt)
-    state["plan"] = resp
-    if resp is None:
-        raise ValueError("Planner does not return a valid response.")
+
+
+def planner_agent(state: InputState) -> PlannerState:
+    prompt = planner_prompt(state["user_prompt"])
+    response = llm.with_structured_output(Plan).invoke(prompt)
+    state = PlannerState(plan=response)
     return state
 
-def architect_agent(state: AgentState) -> AgentState:
+def architect_agent(state: PlannerState) -> ArchitectState:
     plan = state["plan"]
     prompt = architect_prompt(plan)
-    resp = llm.with_structured_output(TaskPlan).invoke(prompt)
-    state["architect_plan"] = resp
-    if resp is None:
-        raise ValueError("Architect does not return a valid response.")
+    response = llm.with_structured_output(TaskPlan).invoke(prompt)
+    state = ArchitectState(task_plan=response)
     return state
 
-def coder_agent(state: AgentState) -> AgentState:
-    coder_state = state.get("coder_state")
-    if coder_state is None:
-        coder_state = CoderState(task_plan=state["architect_plan"],current_step_idx=0)
-    implementation_steps = coder_state.task_plan.implementation_steps
-    if coder_state.current_step_idx >= len(implementation_steps):
-        return {"coder_state": coder_state, "status": "DONE"}
-
-    idx = coder_state.current_step_idx
-    current_task = implementation_steps[idx]
-    existing_content = read_file.invoke({"path": current_task.file_path})
-    user_prmpt = f"""
-    File path: {current_task.file_path}
-    task: {current_task.task_description}
-    existing content: {existing_content}"""
-
-    tools = [read_file, write_file, get_current_directory, list_files, run_cmd]
-
-    react = create_agent(llm,tools,system_prompt=coder_system_prompt())
-    resp = react.invoke({"messages": [{"role": "user", "content": f"{user_prmpt}"}]})
-    print(resp)
-    coder_state.current_step_idx = coder_state.current_step_idx + 1
-    state["coder_state"] = coder_state
-    print("an step completed")
+def coding_stator(state: ArchitectState) -> CoderState:
+    task_plan = state["task_plan"]
+    state = CoderState(task_plan=task_plan,
+                       current_step_idx=0,
+                       current_file_content="",
+                       status="CODER"
+                       )
     return state
 
+def coder_agent(state: CoderState) -> CoderState:
+    agent = create_agent(model=coder_llm,tools=tools,system_prompt=coder_system_prompt())
+    steps = state.task_plan.implementation_steps
+    idx = state.current_step_idx
+    content = state.current_file_content
+    if not content:
+        content = read_file.invoke(steps[idx].file_path)
+    prompt = f"""Complete the specific step mentioned as 'current step' by reviewing other files and full task plan in the project to make every files connected effectively and working efficiently.
+                Full task: {state.task_plan}
+                current step:{steps[idx]}
+                content currently in the file:{content}"""
+    agent.invoke({"messages":[{"role":"user","content":prompt}]})
+    idx = idx + 1
+    state.current_step_idx = idx
+    state.current_file_content = ""
+    if idx >= len(steps):
+        status = "DONE"
+    else:
+        status = "CODER"
+    state.status = status
+    return state
+
+def routing_function(state:CoderState) -> dict:
+    status = state.status
+    return status
 
 
-graph = StateGraph(AgentState)
 
-graph.add_node("Planner", planner_agent)
-graph.add_node("Architect", architect_agent)
-graph.add_node("Coder", coder_agent)
+
+graph = StateGraph(InputState)
+
+graph.add_node("Planner",planner_agent)
+graph.add_node("Architect",architect_agent)
+graph.add_node("Stator",coding_stator)
+graph.add_node("Coder",coder_agent)
 
 graph.set_entry_point("Planner")
-graph.add_edge("Planner", "Architect")
-graph.add_edge("Architect", "Coder")
-graph.add_conditional_edges(
-    "Coder",
-    lambda s: "END" if s.get("status") == "DONE" else "Coder",
-    {"END":END, "Coder":"Coder"}
-)
+graph.add_edge("Planner","Architect")
+graph.add_edge("Architect","Stator")
+graph.add_edge("Stator","Coder")
+graph.add_conditional_edges("Coder",routing_function,{"CODER":"Coder","DONE":END})
 
 app = graph.compile()
 
-response = app.invoke({'user_prompt': user_prompt})
-
-print(response)
+resp = app.invoke({"user_prompt":"make a login page using html css and js."})
