@@ -1,8 +1,8 @@
 from langchain_groq.chat_models import ChatGroq
 from dotenv import load_dotenv
-from agent.prompts import *
-from agent.tools import *
-from agent.states import *
+from prompts import *
+from tools import *
+from states import *
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
 from langchain.agents import create_agent
